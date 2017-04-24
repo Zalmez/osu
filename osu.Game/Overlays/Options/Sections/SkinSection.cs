@@ -8,7 +8,6 @@ using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Graphics.UserInterface;
 using OpenTK;
-using osu.Framework.Graphics.Containers;
 
 namespace osu.Game.Overlays.Options.Sections
 {
@@ -16,7 +15,7 @@ namespace osu.Game.Overlays.Options.Sections
     {
         public override string Header => "Skin";
         public override FontAwesome Icon => FontAwesome.fa_paint_brush;
-        
+
         [BackgroundDependencyLoader]
         private void load(OsuConfigManager config)
         {
@@ -62,8 +61,13 @@ namespace osu.Game.Overlays.Options.Sections
                 },
                 new OptionSlider<double>
                 {
-                    LabelText = "Cursor size",
-                    Bindable = (BindableDouble)config.GetBindable<double>(OsuConfig.CursorSize)
+                    LabelText = "Menu cursor size",
+                    Bindable = (BindableDouble)config.GetBindable<double>(OsuConfig.MenuCursorSize)
+                },
+                new OptionSlider<double>
+                {
+                    LabelText = "Gameplay cursor size",
+                    Bindable = (BindableDouble)config.GetBindable<double>(OsuConfig.GameplayCursorSize)
                 },
                 new OsuCheckbox
                 {

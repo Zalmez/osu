@@ -7,7 +7,6 @@ using System.Linq;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Primitives;
-using osu.Framework.Threading;
 using osu.Game.Graphics.Sprites;
 
 namespace osu.Game.Online.Chat.Drawables
@@ -15,8 +14,8 @@ namespace osu.Game.Online.Chat.Drawables
     public class DrawableChannel : Container
     {
         private readonly Channel channel;
-        private FillFlowContainer flow;
-        private ScrollContainer scroll;
+        private readonly FillFlowContainer flow;
+        private readonly ScrollContainer scroll;
 
         public DrawableChannel(Channel channel)
         {
@@ -41,7 +40,7 @@ namespace osu.Game.Online.Chat.Drawables
                     {
                         flow = new FillFlowContainer
                         {
-                            Direction = FillDirection.Down,
+                            Direction = FillDirection.Vertical,
                             RelativeSizeAxes = Axes.X,
                             AutoSizeAxes = Axes.Y,
                             Padding = new MarginPadding { Left = 20, Right = 20 }

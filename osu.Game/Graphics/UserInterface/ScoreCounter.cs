@@ -8,12 +8,14 @@ using System;
 
 namespace osu.Game.Graphics.UserInterface
 {
-    public class ScoreCounter : RollingCounter<ulong>
+    public class ScoreCounter : RollingCounter<double>
     {
         protected override Type TransformType => typeof(TransformScore);
 
         protected override double RollingDuration => 1000;
         protected override EasingTypes RollingEasing => EasingTypes.Out;
+
+        public bool UseCommaSeparator;
 
         /// <summary>
         /// How many leading zeroes the counter has.
@@ -34,24 +36,29 @@ namespace osu.Game.Graphics.UserInterface
             LeadingZeroes = leading;
         }
 
-        protected override double GetProportionalDuration(ulong currentValue, ulong newValue)
+        protected override double GetProportionalDuration(double currentValue, double newValue)
         {
             return currentValue > newValue ? currentValue - newValue : newValue - currentValue;
         }
 
-        protected override string FormatCount(ulong count)
+        protected override string FormatCount(double count)
         {
-            return count.ToString("D" + LeadingZeroes);
+            string format = new string('0', (int)LeadingZeroes);
+            if (UseCommaSeparator)
+                for (int i = format.Length - 3; i > 0; i -= 3)
+                    format = format.Insert(i, @",");
+
+            return ((long)count).ToString(format);
         }
 
-        public override void Increment(ulong amount)
+        public override void Increment(double amount)
         {
-            Count = Count + amount;
+            Current.Value = Current + amount;
         }
 
-        protected class TransformScore : Transform<ulong>
+        protected class TransformScore : Transform<double>
         {
-            protected override ulong CurrentValue
+            public override double CurrentValue
             {
                 get
                 {
@@ -59,14 +66,14 @@ namespace osu.Game.Graphics.UserInterface
                     if (time < StartTime) return StartValue;
                     if (time >= EndTime) return EndValue;
 
-                    return (ulong)Interpolation.ValueAt(time, StartValue, EndValue, StartTime, EndTime, Easing);
+                    return Interpolation.ValueAt(time, (float)StartValue, (float)EndValue, StartTime, EndTime, Easing);
                 }
             }
 
             public override void Apply(Drawable d)
             {
                 base.Apply(d);
-                (d as ScoreCounter).DisplayedCount = CurrentValue;
+                ((ScoreCounter)d).DisplayedCount = CurrentValue;
             }
         }
     }

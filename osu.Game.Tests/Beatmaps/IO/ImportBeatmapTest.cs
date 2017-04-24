@@ -12,27 +12,13 @@ using osu.Framework.Desktop.Platform;
 using osu.Framework.Platform;
 using osu.Game.Database;
 using osu.Game.IPC;
-using osu.Game.Modes;
-using osu.Game.Modes.Catch;
-using osu.Game.Modes.Mania;
-using osu.Game.Modes.Osu;
-using osu.Game.Modes.Taiko;
 
 namespace osu.Game.Tests.Beatmaps.IO
 {
     [TestFixture]
     public class ImportBeatmapTest
     {
-        const string osz_path = @"../../../osu-resources/osu.Game.Resources/Beatmaps/241526 Soleily - Renatus.osz";
-
-        [OneTimeSetUp]
-        public void SetUp()
-        {
-            Ruleset.Register(new OsuRuleset());
-            Ruleset.Register(new TaikoRuleset());
-            Ruleset.Register(new ManiaRuleset());
-            Ruleset.Register(new CatchRuleset());
-        }
+        private const string osz_path = @"../../../osu-resources/osu.Game.Resources/Beatmaps/241526 Soleily - Renatus.osz";
 
         [Test]
         public void TestImportWhenClosed()
@@ -69,8 +55,8 @@ namespace osu.Game.Tests.Beatmaps.IO
 
                 Assert.IsTrue(File.Exists(temp));
 
-                var importer = new BeatmapImporter(client);
-                if (!importer.ImportAsync(temp).Wait(1000))
+                var importer = new BeatmapIPCChannel(client);
+                if (!importer.ImportAsync(temp).Wait(5000))
                     Assert.Fail(@"IPC took too long to send");
 
                 ensureLoaded(osu);
@@ -91,13 +77,13 @@ namespace osu.Game.Tests.Beatmaps.IO
 
                 Assert.IsTrue(File.Exists(temp));
 
-                using (FileStream stream = File.OpenRead(temp))
+                using (File.OpenRead(temp))
                     osu.Dependencies.Get<BeatmapDatabase>().Import(temp);
 
                 ensureLoaded(osu);
 
                 Assert.IsTrue(File.Exists(temp));
-                
+
                 File.Delete(temp);
 
                 Assert.IsFalse(File.Exists(temp));
@@ -107,7 +93,7 @@ namespace osu.Game.Tests.Beatmaps.IO
         private string prepareTempCopy(string path)
         {
             var temp = Path.GetTempFileName();
-            return new FileInfo(osz_path).CopyTo(temp, true).FullName;
+            return new FileInfo(path).CopyTo(temp, true).FullName;
         }
 
         private OsuGameBase loadOsu(GameHost host)
@@ -119,6 +105,7 @@ namespace osu.Game.Tests.Beatmaps.IO
                 Thread.Sleep(1);
 
             //reset beatmap database (sqlite and storage backing)
+            osu.Dependencies.Get<RulesetDatabase>().Reset();
             osu.Dependencies.Get<BeatmapDatabase>().Reset();
 
             return osu;
@@ -130,13 +117,13 @@ namespace osu.Game.Tests.Beatmaps.IO
 
             Action waitAction = () =>
             {
-                while ((resultSets = osu.Dependencies.Get<BeatmapDatabase>()
-                    .Query<BeatmapSetInfo>().Where(s => s.OnlineBeatmapSetID == 241526)).Count() == 0)
+                while (!(resultSets = osu.Dependencies.Get<BeatmapDatabase>()
+                    .Query<BeatmapSetInfo>().Where(s => s.OnlineBeatmapSetID == 241526)).Any())
                     Thread.Sleep(50);
             };
 
             Assert.IsTrue(waitAction.BeginInvoke(null, null).AsyncWaitHandle.WaitOne(timeout),
-                $@"BeatmapSet did not import to the database in allocated time.");
+                @"BeatmapSet did not import to the database in allocated time.");
 
             //ensure we were stored to beatmap database backing...
 
@@ -166,9 +153,17 @@ namespace osu.Game.Tests.Beatmaps.IO
 
             Assert.IsTrue(set.Beatmaps.Count > 0);
 
-            var beatmap = osu.Dependencies.Get<BeatmapDatabase>().GetWorkingBeatmap(set.Beatmaps.First(b => b.Mode == PlayMode.Osu))?.Beatmap;
+            var beatmap = osu.Dependencies.Get<BeatmapDatabase>().GetWorkingBeatmap(set.Beatmaps.First(b => b.RulesetID == 0))?.Beatmap;
+            Assert.IsTrue(beatmap?.HitObjects.Count > 0);
 
-            Assert.IsTrue(beatmap.HitObjects.Count > 0);
+            beatmap = osu.Dependencies.Get<BeatmapDatabase>().GetWorkingBeatmap(set.Beatmaps.First(b => b.RulesetID == 1))?.Beatmap;
+            Assert.IsTrue(beatmap?.HitObjects.Count > 0);
+
+            beatmap = osu.Dependencies.Get<BeatmapDatabase>().GetWorkingBeatmap(set.Beatmaps.First(b => b.RulesetID == 2))?.Beatmap;
+            Assert.IsTrue(beatmap?.HitObjects.Count > 0);
+
+            beatmap = osu.Dependencies.Get<BeatmapDatabase>().GetWorkingBeatmap(set.Beatmaps.First(b => b.RulesetID == 3))?.Beatmap;
+            Assert.IsTrue(beatmap?.HitObjects.Count > 0);
         }
     }
 }

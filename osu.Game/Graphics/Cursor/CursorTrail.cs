@@ -13,13 +13,12 @@ using osu.Framework.Graphics.OpenGL.Buffers;
 using OpenTK.Graphics.ES30;
 using osu.Framework.Graphics.Primitives;
 using osu.Framework.Graphics.Colour;
+using osu.Framework.Timing;
 
 namespace osu.Game.Graphics.Cursor
 {
-
-    class CursorTrail : Drawable
+    internal class CursorTrail : Drawable
     {
-        public override bool Contains(Vector2 screenSpacePos) => true;
         public override bool HandleInput => true;
 
         private int currentIndex;
@@ -32,11 +31,11 @@ namespace osu.Game.Graphics.Cursor
         private double timeOffset;
 
         private float time;
-        
-        private TrailDrawNodeSharedData trailDrawNodeSharedData = new TrailDrawNodeSharedData();
+
+        private readonly TrailDrawNodeSharedData trailDrawNodeSharedData = new TrailDrawNodeSharedData();
         private const int max_sprites = 2048;
 
-        private TrailPart[] parts = new TrailPart[max_sprites];
+        private readonly TrailPart[] parts = new TrailPart[max_sprites];
 
         private Vector2? lastPosition;
 
@@ -46,7 +45,7 @@ namespace osu.Game.Graphics.Cursor
         {
             base.ApplyDrawNode(node);
 
-            TrailDrawNode tNode = node as TrailDrawNode;
+            TrailDrawNode tNode = (TrailDrawNode)node;
             tNode.Shader = shader;
             tNode.Texture = texture;
             tNode.Size = size;
@@ -60,6 +59,10 @@ namespace osu.Game.Graphics.Cursor
 
         public CursorTrail()
         {
+            // as we are currently very dependent on having a running clock, let's make our own clock for the time being.
+            Clock = new FramedClock();
+
+            AlwaysReceiveInput = true;
             RelativeSizeAxes = Axes.Both;
 
             for (int i = 0; i < max_sprites; i++)
@@ -77,16 +80,22 @@ namespace osu.Game.Graphics.Cursor
             Scale = new Vector2(1 / texture.ScaleAdjust);
         }
 
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+            resetTime();
+        }
+
         protected override void Update()
         {
             base.Update();
 
             Invalidate(Invalidation.DrawNode, shallPropagate: false);
 
-            int fadeClockResetThreshold = 1000000;
+            const int fade_clock_reset_threshold = 1000000;
 
             time = (float)(Time.Current - timeOffset) / 500f;
-            if (time > fadeClockResetThreshold)
+            if (time > fade_clock_reset_threshold)
                 resetTime();
         }
 
@@ -117,7 +126,7 @@ namespace osu.Game.Graphics.Cursor
             float distance = diff.Length;
             Vector2 direction = diff / distance;
 
-            float interval = (size.X / 2) * 0.9f;
+            float interval = size.X / 2 * 0.9f;
 
             for (float d = interval; d < distance; d += interval)
             {
@@ -137,7 +146,7 @@ namespace osu.Game.Graphics.Cursor
             currentIndex = (currentIndex + 1) % max_sprites;
         }
 
-        struct TrailPart
+        private struct TrailPart
         {
             public Vector2 Position;
             public float Time;
@@ -145,12 +154,12 @@ namespace osu.Game.Graphics.Cursor
             public bool WasUpdated;
         }
 
-        class TrailDrawNodeSharedData
+        private class TrailDrawNodeSharedData
         {
             public VertexBuffer<TexturedVertex2D> VertexBuffer;
         }
 
-        class TrailDrawNode : DrawNode
+        private class TrailDrawNode : DrawNode
         {
             public Shader Shader;
             public Texture Texture;
@@ -158,7 +167,7 @@ namespace osu.Game.Graphics.Cursor
             public float Time;
             public TrailDrawNodeSharedData Shared;
 
-            public TrailPart[] Parts = new TrailPart[max_sprites];
+            public readonly TrailPart[] Parts = new TrailPart[max_sprites];
             public Vector2 Size;
 
             public TrailDrawNode()

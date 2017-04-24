@@ -1,11 +1,13 @@
 ﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
 // Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
 
+using System;
+using System.Diagnostics;
+using System.Reflection;
 using osu.Framework.Allocation;
 using osu.Framework.Configuration;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
-using osu.Framework.Graphics.Cursor;
 using osu.Framework.IO.Stores;
 using osu.Framework.Platform;
 using osu.Game.Beatmaps;
@@ -16,6 +18,7 @@ using osu.Game.Graphics;
 using osu.Game.Graphics.Cursor;
 using osu.Game.Graphics.Processing;
 using osu.Game.Online.API;
+using SQLite.Net;
 
 namespace osu.Game
 {
@@ -25,6 +28,10 @@ namespace osu.Game
 
         protected BeatmapDatabase BeatmapDatabase;
 
+        protected RulesetDatabase RulesetDatabase;
+
+        protected ScoreDatabase ScoreDatabase;
+
         protected override string MainResourceFile => @"osu.Game.Resources.dll";
 
         public APIAccess API;
@@ -33,16 +40,55 @@ namespace osu.Game
 
         private RatioAdjust ratioContainer;
 
-        public CursorContainer Cursor;
+        protected MenuCursor Cursor;
 
         public readonly Bindable<WorkingBeatmap> Beatmap = new Bindable<WorkingBeatmap>();
+
+        protected AssemblyName AssemblyName => Assembly.GetEntryAssembly()?.GetName() ?? new AssemblyName { Version = new Version() };
+
+        public bool IsDeployedBuild => AssemblyName.Version.Major > 0;
+
+        public bool IsDebug
+        {
+            get
+            {
+                // ReSharper disable once RedundantAssignment
+                bool isDebug = false;
+                // Debug.Assert conditions are only evaluated in debug mode
+                Debug.Assert(isDebug = true);
+                // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+                return isDebug;
+            }
+        }
+
+        public string Version
+        {
+            get
+            {
+                if (!IsDeployedBuild)
+                    return @"local " + (IsDebug ? @"debug" : @"release");
+
+                var assembly = AssemblyName;
+                return $@"{assembly.Version.Major}.{assembly.Version.Minor}.{assembly.Version.Build}";
+            }
+        }
+
+        public OsuGameBase()
+        {
+            Name = @"osu!lazer";
+        }
 
         [BackgroundDependencyLoader]
         private void load()
         {
             Dependencies.Cache(this);
             Dependencies.Cache(LocalConfig);
-            Dependencies.Cache(BeatmapDatabase = new BeatmapDatabase(Host.Storage, Host));
+
+            SQLiteConnection connection = Host.Storage.GetDatabase(@"client");
+
+            Dependencies.Cache(RulesetDatabase = new RulesetDatabase(Host.Storage, connection));
+            Dependencies.Cache(BeatmapDatabase = new BeatmapDatabase(Host.Storage, connection, RulesetDatabase, Host));
+            Dependencies.Cache(ScoreDatabase = new ScoreDatabase(Host.Storage, connection, Host, BeatmapDatabase));
             Dependencies.Cache(new OsuColour());
 
             //this completely overrides the framework default. will need to change once we make a proper FontStore.
@@ -53,7 +99,10 @@ namespace osu.Game
             Fonts.AddStore(new GlyphStore(Resources, @"Fonts/Exo2.0-Medium"));
             Fonts.AddStore(new GlyphStore(Resources, @"Fonts/Exo2.0-MediumItalic"));
 
-            Fonts.AddStore(new GlyphStore(Resources, @"Fonts/Noto"));
+            Fonts.AddStore(new GlyphStore(Resources, @"Fonts/Noto-Basic"));
+            Fonts.AddStore(new GlyphStore(Resources, @"Fonts/Noto-Hangul"));
+            Fonts.AddStore(new GlyphStore(Resources, @"Fonts/Noto-CJK-Basic"));
+            Fonts.AddStore(new GlyphStore(Resources, @"Fonts/Noto-CJK-Compatibility"));
 
             Fonts.AddStore(new GlyphStore(Resources, @"Fonts/Exo2.0-Regular"));
             Fonts.AddStore(new GlyphStore(Resources, @"Fonts/Exo2.0-RegularItalic"));
@@ -67,6 +116,7 @@ namespace osu.Game
             Fonts.AddStore(new GlyphStore(Resources, @"Fonts/Exo2.0-BlackItalic"));
 
             Fonts.AddStore(new GlyphStore(Resources, @"Fonts/Venera"));
+            Fonts.AddStore(new GlyphStore(Resources, @"Fonts/Venera-Light"));
 
             OszArchiveReader.Register();
 
@@ -95,9 +145,19 @@ namespace osu.Game
 
             AddInternal(ratioContainer = new RatioAdjust
             {
-                Children = new[]
+                Children = new Drawable[]
                 {
-                    Cursor = new OsuCursorContainer { Depth = float.MinValue }
+                    new Container
+                    {
+                        AlwaysReceiveInput = true,
+                        RelativeSizeAxes = Axes.Both,
+                        Depth = float.MinValue,
+                        Children = new Drawable[]
+                        {
+                            Cursor = new MenuCursor(),
+                            new TooltipContainer(Cursor) { Depth = -1 },
+                        }
+                    },
                 }
             });
         }

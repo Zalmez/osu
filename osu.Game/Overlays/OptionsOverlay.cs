@@ -8,7 +8,6 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Primitives;
 using osu.Framework.Graphics.Sprites;
-using osu.Framework.Graphics.Transforms;
 using osu.Game.Overlays.Options;
 using System;
 using osu.Game.Graphics;
@@ -26,7 +25,7 @@ namespace osu.Game.Overlays
         public const float SIDEBAR_WIDTH = Sidebar.DEFAULT_WIDTH;
 
         private const float width = 400;
-        
+
         private const float sidebar_padding = 10;
 
         private ScrollContainer scrollContainer;
@@ -77,7 +76,7 @@ namespace osu.Game.Overlays
                         {
                             AutoSizeAxes = Axes.Y,
                             RelativeSizeAxes = Axes.X,
-                            Direction = FillDirection.Down,
+                            Direction = FillDirection.Vertical,
 
                             Children = new Drawable[]
                             {
@@ -98,9 +97,10 @@ namespace osu.Game.Overlays
                                 {
                                     AutoSizeAxes = Axes.Y,
                                     RelativeSizeAxes = Axes.X,
-                                    Direction = FillDirection.Down,
+                                    Direction = FillDirection.Vertical,
                                     Children = sections,
-                                }
+                                },
+                                new OptionsFooter()
                             }
                         }
                     }
@@ -118,7 +118,7 @@ namespace osu.Game.Overlays
                     ).ToArray()
                 }
             };
-        
+
             scrollContainer.Padding = new MarginPadding { Top = game?.Toolbar.DrawHeight ?? 0 };
         }
 
@@ -146,11 +146,8 @@ namespace osu.Game.Overlays
 
                 var previous = sidebarButtons.SingleOrDefault(sb => sb.Selected);
                 var next = sidebarButtons.SingleOrDefault(sb => sb.Section == bestCandidate);
-                if (next != null)
-                {
-                    previous.Selected = false;
-                    next.Selected = true;
-                }
+                if (previous != null) previous.Selected = false;
+                if (next != null) next.Selected = true;
             }
         }
 

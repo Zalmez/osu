@@ -3,6 +3,7 @@
 
 using System;
 using osu.Framework.Allocation;
+using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Colour;
 using osu.Framework.Graphics.Containers;
@@ -34,26 +35,17 @@ namespace osu.Game.Overlays.Notifications
         public virtual bool DisplayOnTop => true;
 
         protected NotificationLight Light;
-        private CloseButton closeButton;
+        private readonly CloseButton closeButton;
         protected Container IconContent;
-        private Container content;
+        private readonly Container content;
 
         protected override Container<Drawable> Content => content;
 
         protected Container NotificationContent;
 
-        private bool read;
+        public virtual bool Read { get; set; }
 
-        public virtual bool Read
-        {
-            get { return read; }
-            set
-            {
-                read = value;
-            }
-        }
-
-        public Notification()
+        protected Notification()
         {
             RelativeSizeAxes = Axes.X;
             AutoSizeAxes = Axes.Y;
@@ -161,7 +153,7 @@ namespace osu.Game.Overlays.Notifications
             Expire();
         }
 
-        class CloseButton : ClickableContainer
+        private class CloseButton : ClickableContainer
         {
             private Color4 hoverColour;
 
@@ -175,7 +167,9 @@ namespace osu.Game.Overlays.Notifications
                     new TextAwesome
                     {
                         Anchor = Anchor.Centre,
+                        Origin = Anchor.Centre,
                         Icon = FontAwesome.fa_times_circle,
+                        TextSize = 20
                     }
                 };
             }

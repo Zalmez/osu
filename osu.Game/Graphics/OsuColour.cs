@@ -6,12 +6,6 @@ using OpenTK.Graphics;
 
 namespace osu.Game.Graphics
 {
-    public static class OsuColourExtensions
-    {
-        public static Color4 Opacity(this Color4 color, float a) => new Color4(color.R, color.G, color.B, a);
-        public static Color4 Opacity(this Color4 color, byte a) => new Color4(color.R, color.G, color.B, a / 255f);
-    }
-
     public class OsuColour
     {
         public static Color4 Gray(float amt) => new Color4(amt, amt, amt, 1f);
@@ -86,6 +80,10 @@ namespace osu.Game.Graphics
         public Color4 GrayE = FromHex(@"eee");
         public Color4 GrayF = FromHex(@"fff");
 
-        public Color4 Red = FromHex(@"fc4549");
+        public Color4 RedLighter = FromHex(@"ffeded");
+        public Color4 RedLight = FromHex(@"ed7787");
+        public Color4 Red = FromHex(@"ed1121");
+        public Color4 RedDark = FromHex(@"ba0011");
+        public Color4 RedDarker = FromHex(@"870000");
     }
 }

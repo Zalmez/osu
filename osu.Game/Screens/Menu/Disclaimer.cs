@@ -13,13 +13,15 @@ using OpenTK.Graphics;
 
 namespace osu.Game.Screens.Menu
 {
-    class Disclaimer : OsuScreen
+    internal class Disclaimer : OsuScreen
     {
         private Intro intro;
-        private TextAwesome icon;
+        private readonly TextAwesome icon;
         private Color4 iconColour;
 
         internal override bool ShowOverlays => false;
+
+        internal override bool HasLocalCursorDisplayed => true;
 
         public Disclaimer()
         {
@@ -32,7 +34,7 @@ namespace osu.Game.Screens.Menu
                     AutoSizeAxes = Axes.Both,
                     Anchor = Anchor.Centre,
                     Origin = Anchor.Centre,
-                    Direction = FillDirection.Down,
+                    Direction = FillDirection.Vertical,
                     Spacing = new Vector2(0, 2),
                     Children = new Drawable[]
                     {
@@ -86,9 +88,9 @@ namespace osu.Game.Screens.Menu
         }
 
         [BackgroundDependencyLoader]
-        private void load(OsuGame game, OsuColour colours)
+        private void load(OsuColour colours)
         {
-            (intro = new Intro()).LoadAsync(game);
+            LoadComponentAsync(intro = new Intro());
 
             iconColour = colours.Yellow;
         }

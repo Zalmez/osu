@@ -1,22 +1,23 @@
 ﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
 // Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
 
-using System;
-using System.Linq;
-using System.Collections.Generic;
 using OpenTK;
 using OpenTK.Graphics;
+using osu.Framework.Allocation;
 using osu.Framework.Configuration;
+using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Primitives;
 using osu.Framework.Graphics.Sprites;
-using osu.Framework.Graphics.Transforms;
-using osu.Framework.Allocation;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Backgrounds;
 using osu.Game.Graphics.Sprites;
-using osu.Game.Modes;
+using osu.Game.Rulesets.Mods;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using osu.Game.Database;
 
 namespace osu.Game.Overlays.Mods
 {
@@ -28,58 +29,38 @@ namespace osu.Game.Overlays.Mods
 
         private Color4 lowMultiplierColour, highMultiplierColour;
 
-        private OsuSpriteText rankedLabel, multiplierLabel;
-        private FillFlowContainer rankedMultiplerContainer;
+        private readonly OsuSpriteText rankedLabel;
+        private readonly OsuSpriteText multiplierLabel;
+        private readonly FillFlowContainer rankedMultiplerContainer;
 
-        private FillFlowContainer<ModSection> modSectionsContainer;
+        private readonly FillFlowContainer<ModSection> modSectionsContainer;
 
-        public Bindable<Mod[]> SelectedMods = new Bindable<Mod[]>();
+        public readonly Bindable<IEnumerable<Mod>> SelectedMods = new Bindable<IEnumerable<Mod>>();
 
-        public readonly Bindable<PlayMode> PlayMode = new Bindable<PlayMode>();
+        public readonly Bindable<RulesetInfo> Ruleset = new Bindable<RulesetInfo>();
 
-        private void modeChanged(object sender, EventArgs eventArgs)
+        private void rulesetChanged(RulesetInfo newRuleset)
         {
-            var ruleset = Ruleset.GetRuleset(PlayMode);
+            var instance = newRuleset.CreateInstance();
 
-            modSectionsContainer.Children = new ModSection[]
-            {
-                new DifficultyReductionSection
-                {
-                    RelativeSizeAxes = Axes.X,
-                    Origin = Anchor.TopCentre,
-                    Anchor = Anchor.TopCentre,
-                    Action = modButtonPressed,
-                    Buttons = ruleset.GetModsFor(ModType.DifficultyReduction).Select(m => new ModButton(m)).ToArray(),
-                },
-                new DifficultyIncreaseSection
-                {
-                    RelativeSizeAxes = Axes.X,
-                    Origin = Anchor.TopCentre,
-                    Anchor = Anchor.TopCentre,
-                    Action = modButtonPressed,
-                    Buttons = ruleset.GetModsFor(ModType.DifficultyIncrease).Select(m => new ModButton(m)).ToArray(),
-                },
-                new AssistedSection
-                {
-                    RelativeSizeAxes = Axes.X,
-                    Origin = Anchor.TopCentre,
-                    Anchor = Anchor.TopCentre,
-                    Action = modButtonPressed,
-                    Buttons = ruleset.GetModsFor(ModType.Special).Select(m => new ModButton(m)).ToArray(),
-                },
-            };
+            foreach (ModSection section in modSectionsContainer.Children)
+                section.Buttons = instance.GetModsFor(section.ModType).Select(m => new ModButton(m)).ToArray();
+            refreshSelectedMods();
         }
 
-        [BackgroundDependencyLoader(permitNulls:true)]
-        private void load(OsuColour colours, OsuGame osu)
+        [BackgroundDependencyLoader(permitNulls: true)]
+        private void load(OsuColour colours, OsuGame osu, RulesetDatabase rulesets)
         {
             lowMultiplierColour = colours.Red;
             highMultiplierColour = colours.Green;
 
             if (osu != null)
-                PlayMode.BindTo(osu.PlayMode);
-            PlayMode.ValueChanged += modeChanged;
-            PlayMode.TriggerChange();
+                Ruleset.BindTo(osu.Ruleset);
+            else
+                Ruleset.Value = rulesets.AllRulesets.First();
+
+            Ruleset.ValueChanged += rulesetChanged;
+            Ruleset.TriggerChange();
         }
 
         protected override void PopOut()
@@ -95,8 +76,6 @@ namespace osu.Game.Overlays.Mods
                 section.ButtonsContainer.MoveToX(100f, APPEAR_DURATION, EasingTypes.InSine);
                 section.ButtonsContainer.FadeOut(APPEAR_DURATION, EasingTypes.InSine);
             }
-
-            TriggerFocusLost();
         }
 
         protected override void PopIn()
@@ -112,50 +91,38 @@ namespace osu.Game.Overlays.Mods
                 section.ButtonsContainer.MoveToX(0, button_duration, EasingTypes.OutQuint);
                 section.ButtonsContainer.FadeIn(button_duration, EasingTypes.OutQuint);
             }
-
-            Schedule(TriggerFocusContention);
         }
 
         public void DeselectAll()
         {
             foreach (ModSection section in modSectionsContainer.Children)
-            {
-                foreach (ModButton button in section.Buttons)
-                {
-                    button.Deselect();
-                }
-            }
+                section.DeselectAll();
         }
 
-        public void DeselectMod(Modes.Mods modName)
+        public void DeselectTypes(Type[] modTypes)
         {
+            if (modTypes.Length == 0) return;
             foreach (ModSection section in modSectionsContainer.Children)
-            {
                 foreach (ModButton button in section.Buttons)
                 {
-                    foreach (Mod mod in button.Mods)
-                    {
-                        if (mod.Name == modName)
-                        {
+                    Mod selected = button.SelectedMod;
+                    if (selected == null) continue;
+                    foreach (Type type in modTypes)
+                        if (type.IsInstanceOfType(selected))
                             button.Deselect();
-                            return;
-                        }
-                    }
                 }
-            }
         }
 
         private void modButtonPressed(Mod selectedMod)
         {
             if (selectedMod != null)
-            {
-                foreach (Modes.Mods disableMod in selectedMod.DisablesMods)
-                {
-                    DeselectMod(disableMod);
-                }
-            }
-
+                DeselectTypes(selectedMod.IncompatibleMods);
             refreshSelectedMods();
+        }
+
+        private void refreshSelectedMods()
+        {
+            SelectedMods.Value = modSectionsContainer.Children.SelectMany(s => s.Buttons.Select(x => x.SelectedMod).Where(x => x != null)).ToArray();
 
             double multiplier = 1.0;
             bool ranked = true;
@@ -163,46 +130,23 @@ namespace osu.Game.Overlays.Mods
             foreach (Mod mod in SelectedMods.Value)
             {
                 multiplier *= mod.ScoreMultiplier;
-
-                if (ranked)
-                    ranked = mod.Ranked;
+                ranked &= mod.Ranked;
             }
 
             // 1.00x
             // 1.05x
             // 1.20x
 
-            multiplierLabel.Text = string.Format("{0:N2}x", multiplier);
+            multiplierLabel.Text = $"{multiplier:N2}x";
             string rankedString = ranked ? "Ranked" : "Unranked";
             rankedLabel.Text = $@"{rankedString}, Score Multiplier: ";
 
             if (multiplier > 1.0)
-            {
                 multiplierLabel.FadeColour(highMultiplierColour, 200);
-            }
             else if (multiplier < 1.0)
-            {
                 multiplierLabel.FadeColour(lowMultiplierColour, 200);
-            }
             else
-            {
                 multiplierLabel.FadeColour(Color4.White, 200);
-            }
-        }
-
-        private void refreshSelectedMods()
-        {
-            List<Mod> selectedMods = new List<Mod>();
-
-            foreach (ModSection section in modSectionsContainer.Children)
-            {
-                foreach (Mod mod in section.SelectedMods)
-                {
-                    selectedMods.Add(mod);
-                }
-            }
-
-            SelectedMods.Value = selectedMods.ToArray();
         }
 
         public ModSelectOverlay()
@@ -244,7 +188,7 @@ namespace osu.Game.Overlays.Mods
                     AutoSizeAxes = Axes.Y,
                     Anchor = Anchor.BottomCentre,
                     Origin = Anchor.BottomCentre,
-                    Direction = FillDirection.Down,
+                    Direction = FillDirection.Vertical,
                     Spacing = new Vector2(0f, 10f),
                     Children = new Drawable[]
                     {
@@ -268,7 +212,7 @@ namespace osu.Game.Overlays.Mods
                                     Anchor = Anchor.TopCentre,
                                     RelativeSizeAxes = Axes.X,
                                     AutoSizeAxes = Axes.Y,
-                                    Direction = FillDirection.Down,
+                                    Direction = FillDirection.Vertical,
                                     Width = content_width,
                                     Padding = new MarginPadding
                                     {
@@ -313,6 +257,30 @@ namespace osu.Game.Overlays.Mods
                             AutoSizeAxes = Axes.Y,
                             Spacing = new Vector2(0f, 10f),
                             Width = content_width,
+                            Children = new ModSection[]
+                            {
+                                new DifficultyReductionSection
+                                {
+                                    RelativeSizeAxes = Axes.X,
+                                    Origin = Anchor.TopCentre,
+                                    Anchor = Anchor.TopCentre,
+                                    Action = modButtonPressed,
+                                },
+                                new DifficultyIncreaseSection
+                                {
+                                    RelativeSizeAxes = Axes.X,
+                                    Origin = Anchor.TopCentre,
+                                    Anchor = Anchor.TopCentre,
+                                    Action = modButtonPressed,
+                                },
+                                new AssistedSection
+                                {
+                                    RelativeSizeAxes = Axes.X,
+                                    Origin = Anchor.TopCentre,
+                                    Anchor = Anchor.TopCentre,
+                                    Action = modButtonPressed,
+                                },
+                            }
                         },
                         // Footer
                         new Container
@@ -336,7 +304,7 @@ namespace osu.Game.Overlays.Mods
                                     AutoSizeAxes = Axes.Y,
                                     RelativeSizeAxes = Axes.X,
                                     Width = content_width,
-                                    Direction = FillDirection.Right,
+                                    Direction = FillDirection.Horizontal,
                                     Padding = new MarginPadding
                                     {
                                         Top = 20,

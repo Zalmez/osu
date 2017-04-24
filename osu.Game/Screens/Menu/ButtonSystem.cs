@@ -6,11 +6,9 @@ using System.Collections.Generic;
 using System.Linq;
 using osu.Framework;
 using osu.Framework.Allocation;
-using osu.Framework.Audio;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
-using osu.Framework.Graphics.Transforms;
 using osu.Framework.Input;
 using osu.Game.Graphics;
 using osu.Game.Overlays.Toolbar;
@@ -20,7 +18,7 @@ using OpenTK.Input;
 
 namespace osu.Game.Screens.Menu
 {
-    public partial class ButtonSystem : Container, IStateful<MenuState>
+    public class ButtonSystem : Container, IStateful<MenuState>
     {
         public Action OnEdit;
         public Action OnExit;
@@ -33,7 +31,7 @@ namespace osu.Game.Screens.Menu
 
         private Toolbar toolbar;
 
-        private FlowContainerWithOrigin buttonFlow;
+        private readonly FlowContainerWithOrigin buttonFlow;
 
         //todo: make these non-internal somehow.
         internal const float BUTTON_AREA_HEIGHT = 100;
@@ -42,16 +40,16 @@ namespace osu.Game.Screens.Menu
 
         public const int EXIT_DELAY = 3000;
 
-        private OsuLogo osuLogo;
-        private Drawable iconFacade;
-        private Container buttonArea;
-        private Box buttonAreaBackground;
+        private readonly OsuLogo osuLogo;
+        private readonly Drawable iconFacade;
+        private readonly Container buttonArea;
+        private readonly Box buttonAreaBackground;
 
-        private Button backButton;
-        private Button settingsButton;
+        private readonly Button backButton;
+        private readonly Button settingsButton;
 
-        List<Button> buttonsTopLevel = new List<Button>();
-        List<Button> buttonsPlay = new List<Button>();
+        private readonly List<Button> buttonsTopLevel = new List<Button>();
+        private readonly List<Button> buttonsPlay = new List<Button>();
 
         public ButtonSystem()
         {
@@ -78,7 +76,7 @@ namespace osu.Game.Screens.Menu
                         },
                         buttonFlow = new FlowContainerWithOrigin
                         {
-                            Direction = FillDirection.Right,
+                            Direction = FillDirection.Horizontal,
                             Spacing = new Vector2(-WEDGE_WIDTH, 0),
                             Anchor = Anchor.Centre,
                             AutoSizeAxes = Axes.Both,
@@ -188,7 +186,7 @@ namespace osu.Game.Screens.Menu
             }
         }
 
-        MenuState state;
+        private MenuState state;
 
         public override bool HandleInput => state != MenuState.Exit;
 

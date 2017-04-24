@@ -3,10 +3,8 @@
 
 using System;
 using System.Threading;
-using osu.Framework.Allocation;
 using osu.Framework.Screens;
 using osu.Framework.Graphics;
-using osu.Framework.Graphics.Transforms;
 using osu.Framework.Input;
 using OpenTK;
 
@@ -19,8 +17,8 @@ namespace osu.Game.Screens
             return other?.GetType() == GetType();
         }
 
-        const float transition_length = 500;
-        const float x_movement_amount = 50;
+        private const float transition_length = 500;
+        private const float x_movement_amount = 50;
 
         protected override bool OnKeyDown(InputState state, KeyDownEventArgs args)
         {
@@ -28,25 +26,17 @@ namespace osu.Game.Screens
             return false;
         }
 
-        Framework.Game game;
-
-        [BackgroundDependencyLoader]
-        private void load(Framework.Game game)
-        {
-            this.game = game;
-        }
-
         public override bool Push(Screen screen)
         {
-            // When trying to push a non-loaded GameMode, load it asynchronously and re-invoke Push
+            // When trying to push a non-loaded screen, load it asynchronously and re-invoke Push
             // once it's done.
             if (screen.LoadState == LoadState.NotLoaded)
             {
-                screen.LoadAsync(game, d => Push((BackgroundScreen)d));
+                LoadComponentAsync(screen, d => Push((BackgroundScreen)d));
                 return true;
             }
 
-            // Make sure the in-progress loading is complete before pushing the GameMode.
+            // Make sure the in-progress loading is complete before pushing the screen.
             while (screen.LoadState < LoadState.Loaded)
                 Thread.Sleep(1);
 
@@ -58,7 +48,7 @@ namespace osu.Game.Screens
         protected override void Update()
         {
             base.Update();
-            Content.Scale = new Vector2(1 + (x_movement_amount / DrawSize.X) * 2);
+            Content.Scale = new Vector2(1 + x_movement_amount / DrawSize.X * 2);
         }
 
         protected override void OnEntering(Screen last)

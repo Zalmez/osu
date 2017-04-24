@@ -21,9 +21,9 @@ namespace osu.Game.Overlays.Options
         public abstract FontAwesome Icon { get; }
         public abstract string Header { get; }
 
-        private SpriteText headerLabel;
+        private readonly SpriteText headerLabel;
 
-        public OptionsSection()
+        protected OptionsSection()
         {
             Margin = new MarginPadding { Top = 20 };
             AutoSizeAxes = Axes.Y;
@@ -61,7 +61,7 @@ namespace osu.Game.Overlays.Options
                         FlowContent = new FillFlowContainer
                         {
                             Margin = new MarginPadding { Top = header_size + header_margin },
-                            Direction = FillDirection.Down,
+                            Direction = FillDirection.Vertical,
                             Spacing = new Vector2(0, 30),
                             AutoSizeAxes = Axes.Y,
                             RelativeSizeAxes = Axes.X,
@@ -70,7 +70,7 @@ namespace osu.Game.Overlays.Options
                 },
             });
         }
-        
+
         [BackgroundDependencyLoader]
         private void load(OsuColour colours)
         {

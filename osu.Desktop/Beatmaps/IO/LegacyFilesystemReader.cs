@@ -3,10 +3,7 @@
 
 using System.IO;
 using System.Linq;
-using osu.Game.Beatmaps.Formats;
 using osu.Game.Beatmaps.IO;
-using osu.Game.Beatmaps;
-using osu.Game.Database;
 
 namespace osu.Desktop.Beatmaps.IO
 {
@@ -17,31 +14,23 @@ namespace osu.Desktop.Beatmaps.IO
     {
         public static void Register() => AddReader<LegacyFilesystemReader>((storage, path) => Directory.Exists(path));
 
-        private string basePath { get; set; }
-        private Beatmap firstMap { get; set; }
+        private string basePath { get; }
 
         public LegacyFilesystemReader(string path)
         {
             basePath = path;
-            BeatmapFilenames = Directory.GetFiles(basePath, @"*.osu").Select(f => Path.GetFileName(f)).ToArray();
+
+            BeatmapFilenames = Directory.GetFiles(basePath, @"*.osu").Select(Path.GetFileName).ToArray();
+
             if (BeatmapFilenames.Length == 0)
                 throw new FileNotFoundException(@"This directory contains no beatmaps");
-            StoryboardFilename = Directory.GetFiles(basePath, @"*.osb").Select(f => Path.GetFileName(f)).FirstOrDefault();
-            using (var stream = new StreamReader(GetStream(BeatmapFilenames[0])))
-            {
-                var decoder = BeatmapDecoder.GetDecoder(stream);
-                firstMap = decoder.Decode(stream);
-            }
+
+            StoryboardFilename = Directory.GetFiles(basePath, @"*.osb").Select(Path.GetFileName).FirstOrDefault();
         }
 
         public override Stream GetStream(string name)
         {
             return File.OpenRead(Path.Combine(basePath, name));
-        }
-
-        public override BeatmapMetadata ReadMetadata()
-        {
-            return firstMap.BeatmapInfo.Metadata;
         }
 
         public override void Dispose()
